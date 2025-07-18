@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>世界遺産マップ（吹き出しトグル式）</title>
+  <title>世界遺産マップ（吹き出しトグル対応）</title>
   <style>
     html, body {
       height: 100%;
@@ -24,7 +24,8 @@
     }
 
     let map;
-    let currentInfoWindow = null;
+    let infoWindow;
+    let openMarker = null;
 
     const locations = [
       { name: "東京", lat: 35.6895, lng: 139.6917 },
@@ -51,7 +52,7 @@
         localStorage.setItem("mapZoom", JSON.stringify(map.getZoom()));
       });
 
-      const infoWindow = new google.maps.InfoWindow();
+      infoWindow = new google.maps.InfoWindow();
 
       locations.forEach((loc, index) => {
         const marker = new google.maps.Marker({
@@ -70,18 +71,19 @@
             fillOpacity: 1,
             strokeWeight: 2,
             strokeColor: "white"
-          }
+          },
+          title: loc.name
         });
 
         marker.addListener("click", () => {
-          const content = `<div style="font-weight:bold; font-size:14px; padding:4px;">${loc.name}</div>`;
-
-          // すでに開いている吹き出しと同じマーカーをクリックしたら閉じる
-          if (infoWindow.getMap() && infoWindow.anchor === marker) {
+          // 同じマーカーをもう一度クリックした場合は閉じる
+          if (openMarker === marker) {
             infoWindow.close();
+            openMarker = null;
           } else {
-            infoWindow.setContent(content);
+            infoWindow.setContent(`<div style="font-weight:bold; font-size:14px; padding:4px;">${loc.name}</div>`);
             infoWindow.open(map, marker);
+            openMarker = marker;
           }
         });
       });
@@ -90,3 +92,4 @@
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZPRJzf-rbyrdjWjmJYWYpb74dnfLjkHw&callback=initMap" async defer></script>
 </body>
 </html>
+
