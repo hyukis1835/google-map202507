@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>世界遺産マップ（デバイス対応）</title>
+  <title>世界遺産マップ（スマホタップで地名表示）</title>
   <style>
     html, body {
       height: 100%;
@@ -13,16 +13,6 @@
     #map {
       height: 100vh;
       width: 100%;
-    }
-    .label {
-      background-color: orange;
-      border-radius: 50%;
-      color: white;
-      padding: 4px 8px;
-      font-size: 14px;
-      font-weight: bold;
-      border: 2px solid white;
-      box-shadow: 0 0 3px rgba(0,0,0,0.6);
     }
   </style>
 </head>
@@ -61,7 +51,7 @@
       });
 
       locations.forEach((loc, index) => {
-        new google.maps.Marker({
+        const marker = new google.maps.Marker({
           position: { lat: loc.lat, lng: loc.lng },
           map: map,
           label: {
@@ -77,8 +67,15 @@
             fillOpacity: 1,
             strokeWeight: 2,
             strokeColor: "white"
-          },
-          title: loc.name
+          }
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: `<div style="font-weight:bold; font-size:14px; padding:4px;">${loc.name}</div>`
+        });
+
+        marker.addListener("click", () => {
+          infoWindow.open(map, marker);
         });
       });
     }
@@ -86,4 +83,3 @@
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZPRJzf-rbyrdjWjmJYWYpb74dnfLjkHw&callback=initMap" async defer></script>
 </body>
 </html>
-
