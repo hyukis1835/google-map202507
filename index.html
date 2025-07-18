@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>世界遺産マップ（PCズーム対応）</title>
+  <title>世界遺産マップ（デバイス対応）</title>
   <style>
     html, body {
       height: 100%;
@@ -29,6 +29,10 @@
 <body>
   <div id="map"></div>
   <script>
+    function isMobile() {
+      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    }
+
     let map;
 
     const locations = [
@@ -46,7 +50,7 @@
       map = new google.maps.Map(document.getElementById("map"), {
         center: center,
         zoom: zoom,
-        gestureHandling: "greedy",  // ←ここを変更（PCでホイールズーム可能に）
+        gestureHandling: isMobile() ? "cooperative" : "greedy",
         disableDoubleClickZoom: false,
         draggable: true
       });
