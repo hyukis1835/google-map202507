@@ -2,16 +2,24 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>CSV自動読み込みマップ</title>
+  <title>CSVマップ - Closeボタンなし</title>
   <style>
     html, body, #map {
       height: 100%;
-      margin: 0; padding: 0;
+      margin: 0;
+      padding: 0;
     }
 
-    /* ❌ Close ボタン非表示 */
-    .gm-style-iw-d button {
-      display: none !important;
+    .custom-info-window {
+      background: white;
+      border: 1px solid #888;
+      padding: 6px 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      font-size: 14px;
+      position: absolute;
+      z-index: 9999;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -20,9 +28,42 @@
 
   <script>
     let map;
-    let infoWindow;
-    let currentInfoMarker = null;
+    let overlay;
+    let currentInfo = null;
     let markers = [];
+
+    class CustomOverlay extends google.maps.OverlayView {
+      constructor(position, content) {
+        super();
+        this.position = position;
+        this.content = content;
+        this.div = null;
+      }
+
+      onAdd() {
+        this.div = document.createElement("div");
+        this.div.className = "custom-info-window";
+        this.div.innerHTML = this.content;
+        const panes = this.getPanes();
+        panes.floatPane.appendChild(this.div);
+      }
+
+      draw() {
+        const projection = this.getProjection();
+        const point = projection.fromLatLngToDivPixel(this.position);
+        if (point && this.div) {
+          this.div.style.left = point.x + "px";
+          this.div.style.top = point.y + "px";
+        }
+      }
+
+      onRemove() {
+        if (this.div) {
+          this.div.parentNode.removeChild(this.div);
+          this.div = null;
+        }
+      }
+    }
 
     function isMobile() {
       return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -33,22 +74,14 @@
       const savedLng = parseFloat(localStorage.getItem("mapCenterLng"));
       const savedZoom = parseInt(localStorage.getItem("mapZoom"), 10);
 
-      const defaultLatLng = {
-        lat: savedLat || 35.681236,
-        lng: savedLng || 139.767125,
-      };
-      const defaultZoom = savedZoom || 5;
-
       map = new google.maps.Map(document.getElementById("map"), {
-        center: defaultLatLng,
-        zoom: defaultZoom,
+        center: { lat: savedLat || 35.681236, lng: savedLng || 139.767125 },
+        zoom: savedZoom || 5,
         gestureHandling: isMobile() ? "greedy" : "auto",
         fullscreenControl: false,
         streetViewControl: false,
         mapTypeControl: false,
       });
-
-      infoWindow = new google.maps.InfoWindow();
 
       map.addListener("idle", () => {
         const center = map.getCenter();
@@ -62,26 +95,16 @@
 
     function loadCSVAndAddMarkers() {
       fetch('places.csv')
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('CSVファイルの読み込みに失敗しました');
-          }
-          return response.text();
-        })
+        .then(response => response.text())
         .then(text => {
           const lines = text.split(/\r?\n/);
           const countryCounters = {};
 
           lines.forEach(line => {
             if (!line.trim()) return;
-            const cols = line.split(",");
-            if (cols.length < 4) return;
-
-            const country = cols[0].trim();
-            const name = cols[1].trim();
-            const lat = parseFloat(cols[2]);
-            const lng = parseFloat(cols[3]);
-
+            const [country, name, latStr, lngStr] = line.split(",");
+            const lat = parseFloat(latStr);
+            const lng = parseFloat(lngStr);
             if (!country || !name || isNaN(lat) || isNaN(lng)) return;
 
             if (!countryCounters[country]) countryCounters[country] = 1;
@@ -108,26 +131,24 @@
             });
 
             marker.addListener("click", () => {
-              const isSameMarker = (marker === currentInfoMarker);
-
-              if (!isMobile()) {
-                if (isSameMarker && infoWindow.getMap()) {
-                  infoWindow.close();
-                  currentInfoMarker = null;
-                  return;
+              if (currentInfo) {
+                currentInfo.setMap(null);
+                currentInfo = null;
+                if (!isMobile()) {
+                  if (currentInfo?.marker === marker) return;
                 }
               }
 
-              infoWindow.setContent(`${country} ${number}: ${name}`);
-              infoWindow.open(map, marker);
-              currentInfoMarker = marker;
+              if (!currentInfo || currentInfo?.marker !== marker) {
+                const html = `${country} ${number}: ${name}`;
+                currentInfo = new CustomOverlay(marker.getPosition(), html);
+                currentInfo.marker = marker;
+                currentInfo.setMap(map);
+              }
             });
 
             markers.push(marker);
           });
-        })
-        .catch(error => {
-          console.error(error);
         });
     }
   </script>
