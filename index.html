@@ -8,6 +8,11 @@
       height: 100%;
       margin: 0; padding: 0;
     }
+
+    /* ❌ Close ボタン非表示 */
+    .gm-style-iw-d button {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -16,15 +21,11 @@
   <script>
     let map;
     let infoWindow;
+    let currentInfoMarker = null;
     let markers = [];
 
     function isMobile() {
       return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    }
-
-    function clearMarkers() {
-      markers.forEach(marker => marker.setMap(null));
-      markers = [];
     }
 
     function initMap() {
@@ -107,12 +108,19 @@
             });
 
             marker.addListener("click", () => {
-              if (infoWindow.getMap()) {
-                infoWindow.close();
-                if (infoWindow.anchor === marker) return;
+              const isSameMarker = (marker === currentInfoMarker);
+
+              if (!isMobile()) {
+                if (isSameMarker && infoWindow.getMap()) {
+                  infoWindow.close();
+                  currentInfoMarker = null;
+                  return;
+                }
               }
+
               infoWindow.setContent(`${country} ${number}: ${name}`);
               infoWindow.open(map, marker);
+              currentInfoMarker = marker;
             });
 
             markers.push(marker);
@@ -125,9 +133,10 @@
   </script>
 
   <script async
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZPRJzf-rbyrdjWjmJYWYpb74dnfLjkHw&callback=initMap">
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap">
   </script>
 </body>
 </html>
+
 
 
