@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>カスタム Google Map</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+      border: none;
+    }
+  </style>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZPRJzf-rbyrdjWjmJYWYpb74dnfLjkHw&language=ja"></script>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+  const defaultPosition = { lat: 35.6811673, lng: 139.7670516 };
+  const savedLat = parseFloat(localStorage.getItem('lastLat'));
+  const savedLng = parseFloat(localStorage.getItem('lastLng'));
+  const savedZoom = parseInt(localStorage.getItem('lastZoom'));
+
+  const map = new google.maps.Map(document.getElementById('map'), {
+    center: (!isNaN(savedLat) && !isNaN(savedLng)) ? { lat: savedLat, lng: savedLng } : defaultPosition,
+    zoom: !isNaN(savedZoom) ? savedZoom : 14,
+    mapTypeId: 'roadmap',
+    gestureHandling: 'greedy'
+  });
+
+  const kmlLayer = new google.maps.KmlLayer({
+    url: window.location.origin + '/map.kml',
+    map: map,
+    preserveViewport: true
+  });
+
+  // 少し遅らせて保存することでズレ防止
+  let saveTimer;
+  function saveMapState() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const center = map.getCenter();
+      localStorage.setItem('lastLat', center.lat());
+      localStorage.setItem('lastLng', center.lng());
+      localStorage.setItem('lastZoom', map.getZoom());
+    }, 1000);
+  }
+
+  map.addListener('idle', saveMapState);
+</script>
+</body>
+</html>
