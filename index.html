@@ -1,25 +1,12 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8">
   <title>世界遺産マップ</title>
   <style>
-    html, body, #map {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
-
-    .custom-info-window {
-      background: white;
-      border: 1px solid #888;
-      padding: 6px 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      font-size: 14px;
-      position: absolute;
-      z-index: 9999;
-      pointer-events: none;
+    #map {
+      height: 100vh;
+      width: 100%;
     }
   </style>
 </head>
@@ -28,132 +15,66 @@
 
   <script>
     let map;
-    let currentInfo = null;
-    let markers = [];
-
-    class CustomOverlay extends google.maps.OverlayView {
-      constructor(position, content, marker) {
-        super();
-        this.position = position;
-        this.content = content;
-        this.marker = marker;
-        this.div = null;
-      }
-
-      onAdd() {
-        this.div = document.createElement("div");
-        this.div.className = "custom-info-window";
-        this.div.innerHTML = this.content;
-        const panes = this.getPanes();
-        panes.floatPane.appendChild(this.div);
-      }
-
-      draw() {
-        const projection = this.getProjection();
-        const point = projection.fromLatLngToDivPixel(this.position);
-        if (point && this.div) {
-          this.div.style.left = point.x + "px";
-          this.div.style.top = point.y + "px";
-        }
-      }
-
-      onRemove() {
-        if (this.div) {
-          this.div.remove();
-          this.div = null;
-        }
-      }
-    }
-
-    function isMobile() {
-      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    }
+    let infoWindow = null;
 
     function initMap() {
-      const savedLat = parseFloat(localStorage.getItem("mapCenterLat"));
-      const savedLng = parseFloat(localStorage.getItem("mapCenterLng"));
-      const savedZoom = parseInt(localStorage.getItem("mapZoom"), 10);
+      // ローカルストレージから位置を復元
+      const storedLat = parseFloat(localStorage.getItem('mapLat')) || 35.6812;
+      const storedLng = parseFloat(localStorage.getItem('mapLng')) || 139.7671;
+      const storedZoom = parseInt(localStorage.getItem('mapZoom')) || 2;
 
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: savedLat || 35.681236, lng: savedLng || 139.767125 },
-        zoom: savedZoom || 5,
-        gestureHandling: isMobile() ? "greedy" : "auto",
-        fullscreenControl: false,
-        streetViewControl: false,
-        mapTypeControl: false,
+        center: { lat: storedLat, lng: storedLng },
+        zoom: storedZoom,
       });
 
+      // 地図移動時に位置を保存
       map.addListener("idle", () => {
         const center = map.getCenter();
-        localStorage.setItem("mapCenterLat", center.lat());
-        localStorage.setItem("mapCenterLng", center.lng());
+        localStorage.setItem("mapLat", center.lat());
+        localStorage.setItem("mapLng", center.lng());
         localStorage.setItem("mapZoom", map.getZoom());
       });
 
-      loadCSVAndAddMarkers();
-    }
-
-    function loadCSVAndAddMarkers() {
-      fetch('places.csv')
+      fetch("places.csv")
         .then(response => response.text())
-        .then(text => {
-          const lines = text.split(/\r?\n/);
-          const countryCounters = {};
-
-          lines.forEach(line => {
-            if (!line.trim()) return;
-            const [country, name, latStr, lngStr] = line.split(",");
+        .then(csvText => {
+          const lines = csvText.trim().split("\n");
+          for (const line of lines) {
+            const [name, latStr, lngStr] = line.split(",");
             const lat = parseFloat(latStr);
             const lng = parseFloat(lngStr);
-            if (!country || !name || isNaN(lat) || isNaN(lng)) return;
-
-            if (!countryCounters[country]) countryCounters[country] = 1;
-            const number = countryCounters[country]++;
 
             const marker = new google.maps.Marker({
               position: { lat, lng },
               map,
               title: name,
-              label: {
-                text: number.toString(),
-                color: "white",
-                fontWeight: "bold",
-                fontSize: "12px",
-              },
               icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 12, // ← 小さめ
-                fillColor: "orange",
-                fillOpacity: 1,
-                strokeWeight: 2,
-                strokeColor: "white",
+                url: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png",
+                scaledSize: new google.maps.Size(30, 30),
               },
             });
 
             marker.addListener("click", () => {
-              if (currentInfo) {
-                if (currentInfo.marker === marker) {
-                  currentInfo.setMap(null);
-                  currentInfo = null;
-                  return;
-                } else {
-                  currentInfo.setMap(null);
-                }
+              if (infoWindow && infoWindow.anchor === marker) {
+                infoWindow.close();
+                infoWindow = null;
+              } else {
+                if (infoWindow) infoWindow.close();
+                infoWindow = new google.maps.InfoWindow({
+                  content: `<div style="font-size:14px;">${name}</div>`
+                });
+                infoWindow.open(map, marker);
               }
-
-              currentInfo = new CustomOverlay(marker.getPosition(), name, marker);
-              currentInfo.setMap(map);
             });
-
-            markers.push(marker);
-          });
+          }
         });
     }
   </script>
 
-  <script async
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZPRJzf-rbyrdjWjmJYWYpb74dnfLjkHw&callback=initMap">
-  </script>
+  <!-- あなたのAPIキーを以下に挿入 -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZPRJzf-rbyrdjWjmJYWYpb74dnfLjkHw&callback=initMap"
+    async defer></script>
 </body>
 </html>
 
