@@ -1,30 +1,44 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>地図マーカー with CSV</title>
+  <meta charset="UTF-8" />
+  <title>国別番号付きマーカーCSV読み込み地図</title>
   <style>
     html, body, #map {
       height: 100%;
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
     }
     #map {
       touch-action: manipulation;
     }
+    #csvFile {
+      position: absolute;
+      top: 10px; left: 10px;
+      z-index: 10;
+      background: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
-  <input type="file" id="csvFile" accept=".csv">
+  <input type="file" id="csvFile" accept=".csv" />
   <div id="map"></div>
 
   <script>
     let map;
     let infoWindow;
-    const markers = [];
+    let markers = [];
 
     function isMobile() {
       return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    }
+
+    function clearMarkers() {
+      markers.forEach(marker => marker.setMap(null));
+      markers = [];
     }
 
     function initMap() {
@@ -44,7 +58,7 @@
         gestureHandling: isMobile() ? "greedy" : "auto",
         fullscreenControl: false,
         streetViewControl: false,
-        mapTypeControl: false
+        mapTypeControl: false,
       });
 
       infoWindow = new google.maps.InfoWindow();
@@ -63,20 +77,48 @@
       const file = event.target.files[0];
       if (!file) return;
 
+      clearMarkers();
+      infoWindow.close();
+
       const reader = new FileReader();
       reader.onload = function (e) {
         const text = e.target.result;
         const lines = text.split(/\r?\n/);
-        for (const line of lines) {
-          const [name, latStr, lngStr] = line.split(",");
-          const lat = parseFloat(latStr);
-          const lng = parseFloat(lngStr);
-          if (!name || isNaN(lat) || isNaN(lng)) continue;
+        const countryCounters = {};
+
+        lines.forEach(line => {
+          if (!line.trim()) return; // 空行スキップ
+          const cols = line.split(",");
+          if (cols.length < 4) return; // 列数不足ならスキップ
+
+          const country = cols[0].trim();
+          const name = cols[1].trim();
+          const lat = parseFloat(cols[2]);
+          const lng = parseFloat(cols[3]);
+
+          if (!country || !name || isNaN(lat) || isNaN(lng)) return;
+
+          if (!countryCounters[country]) countryCounters[country] = 1;
+          const number = countryCounters[country]++;
 
           const marker = new google.maps.Marker({
             position: { lat, lng },
             map,
             title: name,
+            label: {
+              text: number.toString(),
+              color: "white",
+              fontWeight: "bold",
+              fontSize: "14px",
+            },
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 16,
+              fillColor: "orange",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "white",
+            },
           });
 
           marker.addListener("click", () => {
@@ -84,12 +126,12 @@
               infoWindow.close();
               if (infoWindow.anchor === marker) return;
             }
-            infoWindow.setContent(name);
+            infoWindow.setContent(`${country} ${number}: ${name}`);
             infoWindow.open(map, marker);
           });
 
           markers.push(marker);
-        }
+        });
       };
       reader.readAsText(file, "UTF-8");
     }
@@ -100,4 +142,3 @@
   </script>
 </body>
 </html>
-
