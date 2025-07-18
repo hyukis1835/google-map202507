@@ -3,35 +3,21 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>世界遺産マップ（吹き出しトグル対応）</title>
+  <title>世界遺産マップ</title>
   <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
     #map {
       height: 100vh;
       width: 100%;
+      touch-action: none; /* スマホでの誤スクロール防止 */
     }
   </style>
 </head>
-  <style>
-  /* InfoWindow の Close ボタン（X）を非表示にする */
-  .gm-ui-hover-effect {
-    display: none !important;
-  }
-</style>
 <body>
   <div id="map"></div>
-  <script>
-    function isMobile() {
-      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    }
 
+  <script>
     let map;
-    let infoWindow;
-    let openMarker = null;
+    let activeInfoWindow = null;
 
     const locations = [
       { name: "東京", lat: 35.6895, lng: 139.6917 },
@@ -48,7 +34,7 @@
       map = new google.maps.Map(document.getElementById("map"), {
         center: center,
         zoom: zoom,
-        gestureHandling: isMobile() ? "cooperative" : "greedy",
+        gestureHandling: "greedy", // PC: ホイールズーム許可 / スマホ: 2本指操作
         disableDoubleClickZoom: false,
         draggable: true
       });
@@ -57,8 +43,6 @@
         localStorage.setItem("mapCenter", JSON.stringify(map.getCenter().toJSON()));
         localStorage.setItem("mapZoom", JSON.stringify(map.getZoom()));
       });
-
-      infoWindow = new google.maps.InfoWindow();
 
       locations.forEach((loc, index) => {
         const marker = new google.maps.Marker({
@@ -81,21 +65,37 @@
           title: loc.name
         });
 
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="
+              font-weight: bold;
+              font-size: 12px;
+              padding: 4px 6px;
+              max-width: 120px;
+              white-space: nowrap;
+            ">
+              ${loc.name}
+            </div>
+          `
+        });
+
         marker.addListener("click", () => {
-          // 同じマーカーをもう一度クリックした場合は閉じる
-          if (openMarker === marker) {
-            infoWindow.close();
-            openMarker = null;
-          } else {
-            infoWindow.setContent(`<div style="font-weight:bold; font-size:14px; padding:4px;">${loc.name}</div>`);
-            infoWindow.open(map, marker);
-            openMarker = marker;
+          if (activeInfoWindow) {
+            activeInfoWindow.close();
+            if (activeInfoWindow === infoWindow) {
+              activeInfoWindow = null;
+              return;
+            }
           }
+          infoWindow.open(map, marker);
+          activeInfoWindow = infoWindow;
         });
       });
     }
   </script>
+
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZPRJzf-rbyrdjWjmJYWYpb74dnfLjkHw&callback=initMap" async defer></script>
 </body>
 </html>
+
 
