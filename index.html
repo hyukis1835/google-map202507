@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>CSVマップ - Closeボタンなし</title>
+  <title>世界遺産マップ</title>
   <style>
     html, body, #map {
       height: 100%;
@@ -28,15 +28,15 @@
 
   <script>
     let map;
-    let overlay;
     let currentInfo = null;
     let markers = [];
 
     class CustomOverlay extends google.maps.OverlayView {
-      constructor(position, content) {
+      constructor(position, content, marker) {
         super();
         this.position = position;
         this.content = content;
+        this.marker = marker;
         this.div = null;
       }
 
@@ -59,7 +59,7 @@
 
       onRemove() {
         if (this.div) {
-          this.div.parentNode.removeChild(this.div);
+          this.div.remove();
           this.div = null;
         }
       }
@@ -118,11 +118,11 @@
                 text: number.toString(),
                 color: "white",
                 fontWeight: "bold",
-                fontSize: "14px",
+                fontSize: "12px",
               },
               icon: {
                 path: google.maps.SymbolPath.CIRCLE,
-                scale: 16,
+                scale: 12, // ← 小さめ
                 fillColor: "orange",
                 fillOpacity: 1,
                 strokeWeight: 2,
@@ -132,19 +132,17 @@
 
             marker.addListener("click", () => {
               if (currentInfo) {
-                currentInfo.setMap(null);
-                currentInfo = null;
-                if (!isMobile()) {
-                  if (currentInfo?.marker === marker) return;
+                if (currentInfo.marker === marker) {
+                  currentInfo.setMap(null);
+                  currentInfo = null;
+                  return;
+                } else {
+                  currentInfo.setMap(null);
                 }
               }
 
-              if (!currentInfo || currentInfo?.marker !== marker) {
-                const html = `${country} ${number}: ${name}`;
-                currentInfo = new CustomOverlay(marker.getPosition(), html);
-                currentInfo.marker = marker;
-                currentInfo.setMap(map);
-              }
+              currentInfo = new CustomOverlay(marker.getPosition(), name, marker);
+              currentInfo.setMap(map);
             });
 
             markers.push(marker);
