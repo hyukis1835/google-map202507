@@ -11,19 +11,33 @@
     #map {
       touch-action: manipulation;
     }
+    /* ファイル入力は非表示 */
     #csvFile {
-      position: absolute;
-      top: 10px; left: 10px;
-      z-index: 10;
-      background: white;
+      display: none;
+    }
+    /* ファイル選択ボタンの見た目 */
+    label[for="csvFile"] {
+      cursor: pointer;
+      background-color: #ff7f00;
+      color: white;
       padding: 6px 12px;
       border-radius: 4px;
+      font-weight: bold;
       box-shadow: 0 0 6px rgba(0,0,0,0.3);
-      font-size: 14px;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+    label[for="csvFile"]:hover {
+      background-color: #e06b00;
     }
   </style>
 </head>
 <body>
+  <label for="csvFile">CSVファイルを選択</label>
   <input type="file" id="csvFile" accept=".csv" />
   <div id="map"></div>
 
@@ -142,3 +156,4 @@
   </script>
 </body>
 </html>
+
