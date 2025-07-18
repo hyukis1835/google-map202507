@@ -2,43 +2,15 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>国別番号付きマーカーCSV読み込み地図</title>
+  <title>CSV自動読み込みマップ</title>
   <style>
     html, body, #map {
       height: 100%;
       margin: 0; padding: 0;
     }
-    #map {
-      touch-action: manipulation;
-    }
-    /* ファイル入力は非表示 */
-    #csvFile {
-      display: none;
-    }
-    /* ファイル選択ボタンの見た目 */
-    label[for="csvFile"] {
-      cursor: pointer;
-      background-color: #ff7f00;
-      color: white;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-weight: bold;
-      box-shadow: 0 0 6px rgba(0,0,0,0.3);
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 10;
-      user-select: none;
-      transition: background-color 0.3s ease;
-    }
-    label[for="csvFile"]:hover {
-      background-color: #e06b00;
-    }
   </style>
 </head>
 <body>
-  <label for="csvFile">CSVファイルを選択</label>
-  <input type="file" id="csvFile" accept=".csv" />
   <div id="map"></div>
 
   <script>
@@ -84,70 +56,71 @@
         localStorage.setItem("mapZoom", map.getZoom());
       });
 
-      document.getElementById("csvFile").addEventListener("change", handleFileSelect);
+      loadCSVAndAddMarkers();
     }
 
-    function handleFileSelect(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+    function loadCSVAndAddMarkers() {
+      fetch('places.csv')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('CSVファイルの読み込みに失敗しました');
+          }
+          return response.text();
+        })
+        .then(text => {
+          const lines = text.split(/\r?\n/);
+          const countryCounters = {};
 
-      clearMarkers();
-      infoWindow.close();
+          lines.forEach(line => {
+            if (!line.trim()) return;
+            const cols = line.split(",");
+            if (cols.length < 4) return;
 
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const text = e.target.result;
-        const lines = text.split(/\r?\n/);
-        const countryCounters = {};
+            const country = cols[0].trim();
+            const name = cols[1].trim();
+            const lat = parseFloat(cols[2]);
+            const lng = parseFloat(cols[3]);
 
-        lines.forEach(line => {
-          if (!line.trim()) return; // 空行スキップ
-          const cols = line.split(",");
-          if (cols.length < 4) return; // 列数不足ならスキップ
+            if (!country || !name || isNaN(lat) || isNaN(lng)) return;
 
-          const country = cols[0].trim();
-          const name = cols[1].trim();
-          const lat = parseFloat(cols[2]);
-          const lng = parseFloat(cols[3]);
+            if (!countryCounters[country]) countryCounters[country] = 1;
+            const number = countryCounters[country]++;
 
-          if (!country || !name || isNaN(lat) || isNaN(lng)) return;
+            const marker = new google.maps.Marker({
+              position: { lat, lng },
+              map,
+              title: name,
+              label: {
+                text: number.toString(),
+                color: "white",
+                fontWeight: "bold",
+                fontSize: "14px",
+              },
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 16,
+                fillColor: "orange",
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: "white",
+              },
+            });
 
-          if (!countryCounters[country]) countryCounters[country] = 1;
-          const number = countryCounters[country]++;
+            marker.addListener("click", () => {
+              if (infoWindow.getMap()) {
+                infoWindow.close();
+                if (infoWindow.anchor === marker) return;
+              }
+              infoWindow.setContent(`${country} ${number}: ${name}`);
+              infoWindow.open(map, marker);
+            });
 
-          const marker = new google.maps.Marker({
-            position: { lat, lng },
-            map,
-            title: name,
-            label: {
-              text: number.toString(),
-              color: "white",
-              fontWeight: "bold",
-              fontSize: "14px",
-            },
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 16,
-              fillColor: "orange",
-              fillOpacity: 1,
-              strokeWeight: 2,
-              strokeColor: "white",
-            },
+            markers.push(marker);
           });
-
-          marker.addListener("click", () => {
-            if (infoWindow.getMap()) {
-              infoWindow.close();
-              if (infoWindow.anchor === marker) return;
-            }
-            infoWindow.setContent(`${country} ${number}: ${name}`);
-            infoWindow.open(map, marker);
-          });
-
-          markers.push(marker);
+        })
+        .catch(error => {
+          console.error(error);
         });
-      };
-      reader.readAsText(file, "UTF-8");
     }
   </script>
 
@@ -156,4 +129,5 @@
   </script>
 </body>
 </html>
+
 
